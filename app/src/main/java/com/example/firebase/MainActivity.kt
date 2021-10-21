@@ -7,10 +7,7 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
 import com.google.firebase.analytics.FirebaseAnalytics
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
+import com.google.firebase.database.*
 import com.google.firebase.ktx.Firebase
 import kotlinx.android.parcel.Parcelize
 import kotlinx.android.synthetic.main.activity_main.*
@@ -20,92 +17,123 @@ import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
-    private var clickNum = 0
-    private lateinit var textView: TextView
-    private lateinit var analytics: FirebaseAnalytics
-    private lateinit var FirstName: EditText
-    private lateinit var LastName: EditText
-    private lateinit var Phone: EditText
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // [START write_message]
-        // Write a message to the database
+        // initialize the Real Time Database
         val database = FirebaseDatabase.getInstance()
-        val FnameRef = database.getReference("First Name")
-        val LnameRef = database.getReference("Last Name")
-        val PhoneRef = database.getReference("Phone Number")
+        // create references for the fields
+        val FnameR = database.reference.child("First Name")
+        val LnameR = database.reference.child("Last Name")
+        val PhoneR = database.reference.child("Phone Number")
+
+
+
 
         // function to write input to Firebase
         // suspended so it can run in a coroutine
-        suspend fun WriteToFirebase(FN: String, LN: String, PN: String){
-            FnameRef.setValue(FN)
-            LnameRef.setValue(LN)
-            PhoneRef.setValue(PN)
+        suspend fun WriteToFirebase(FN: String, LN: String, PN: String) {
+            // creates an instance of the User Data Class
+            val user = User(FN, LN, PN)
+            // set the values to write to Firebase
+            // TODO -> This is writing
+            // ""androidx.appcompat.widget.AppCompatEditText{bc16016 VFED..CL. ........ 0,188-1080,346 #7f0801da app:id/et_fName}""
+            // to the Firebase fields
+            FnameR.setValue(FN)
+            LnameR.setValue(LN)
+            PhoneR.setValue(PN)
         }
+
 
         // function to read the data from Firebase
         // also suspended in order to run in a coroutine
-
-        suspend fun ReadFromFirebase(){
-            // Reads from Firebase
-            FnameRef.addValueEventListener(object : ValueEventListener{
-                // this is executed on data changes
-                override fun onDataChange(dataSnapshot: DataSnapshot) {
-                    // This method is called once with
-                    // the initial value and again whenever
-                    // data at this location is updated
-                    val value = dataSnapshot.getValue()
-                    tv_DBRead.text = value.toString()
+        suspend fun ReadFromFirebase() {
+            // Reads 'First Name' from Firebase
+            FnameR.addValueEventListener(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    // pulled the values from Firebase into this
+                    // object of the User data class in order to
+                    // keep it from being encoded
+                    val user = User(FnameR.database.toString(),
+                        LnameR.database.reference.toString(),
+                        PhoneR.database.reference.toString())
+                    // pull the firstname from the User object
+                    // then assign that to the cooresponding text view
+                    tv_first_name.text = user.firstname.toString()
                 }
-                // this is executed when an error occurs
                 override fun onCancelled(error: DatabaseError) {
-
+                    tv_first_name.text = "DatabaseError"
+                }})
+            // Reads 'Last Name' from Firebase
+            LnameR.addValueEventListener(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    // pulled the values from Firebase into this
+                    // object of the User data class in order to
+                    // keep it from being encoded
+                    val user = User(FnameR.database.toString(),
+                        LnameR.database.reference.toString(),
+                        PhoneR.database.reference.toString())
+                    // pull the lastname from the User object
+                    // then assign that to the cooresponding text view
+                    tv_last_name.text = user.lastname.toString()
                 }
+                override fun onCancelled(error: DatabaseError) {
+                    tv_last_name.text = "DatabaseError"
+                }})
+            // Reads 'Phone Number' from Firebase
+            PhoneR.addValueEventListener(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    // pulled the values from Firebase into this
+                    // object of the User data class in order to
+                    // keep it from being encoded
+                    val user = User(FnameR.database.toString(),
+                        LnameR.database.reference.toString(),
+                        PhoneR.database.reference.toString())
+                    // pull the lastname from the User object
+                    // then assign that to the cooresponding text view
+                    tv_phone_number.text = user.phonenumber.toString()
+                }
+                override fun onCancelled(error: DatabaseError) {
+                    tv_last_name.text = "DatabaseError"
+                }})}
 
-            })
-        }
 
 
 
-        //val upButton = findViewById<Button>(R.id.btn_writeFB)
-        btn_writeFB.setOnClickListener {
-            // launch coroutine
-            // 3 possible coroutine scopes
-            // IO, Main, Default(heavy computational work)
-            CoroutineScope(Dispatchers.IO).launch {
-                // write the edit text values
-                // to firebase in a background thread
-                WriteToFirebase(et_fName.toString(), et_lName.toString(), et_phone.toString())
+
+
+            // this button is for to read the
+            // previously written data to Firbase
+            // and display it in the UI somehow
+            btn_readGFB.setOnClickListener {
+                // set tv to null
+                //tv_first_name.text = null
+                CoroutineScope(Dispatchers.IO).launch {
+                    ReadFromFirebase()
+                }}
+
+            btn_writeFB.setOnClickListener {
+                // launch coroutine
+                // 3 possible coroutine scopes
+                // IO, Main, Default(heavy computational work)
+                CoroutineScope(Dispatchers.IO).launch {
+                    // write the edit text values
+                    // to firebase in a background thread
+                    WriteToFirebase(et_fName.toString(), et_lName.toString(), et_phone.toString())
+                }
+                // reset the edit text values
+                et_fName?.text = null
+                et_lName?.text = null
+                et_phone?.text = null
             }
-            // reset the edit text values
-            et_fName?.text = null
-            et_lName?.text = null
-            et_phone?.text = null
-        }
 
 
 
-
-        // this button is for to read the
-        // previously written data to Firbase
-        // and display it in the UI somehow
-        btn_readGFB.setOnClickListener{
-            // set tv to null
-            tv_DBRead.text = null
-            CoroutineScope(Dispatchers.IO).launch {
-                ReadFromFirebase()
-            }
-        }
-
-        // should clear the UI/possibly
-        // the firebase entry also
-        btn_clear.setOnClickListener{
-            tv_DBRead.text = null
-        }
-
-
-    }
-}
+            // should clear the UI/possibly
+            // the firebase entry also
+            btn_clear.setOnClickListener {
+                tv_first_name.text = null
+                tv_last_name.text = null
+                tv_phone_number.text = null
+            }}}

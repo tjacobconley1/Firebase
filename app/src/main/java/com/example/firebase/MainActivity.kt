@@ -7,8 +7,12 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.TextView
 import com.google.firebase.analytics.FirebaseAnalytics
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 import com.google.firebase.ktx.Firebase
+import kotlinx.android.parcel.Parcelize
 import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -27,36 +31,6 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        //setSupportActionBar(toolbar)
-        textView = findViewById<TextView>(R.id.myText)
-        analytics = FirebaseAnalytics.getInstance(this)
-
-        val upButton = findViewById<Button>(R.id.button)
-        upButton.setOnClickListener {
-
-            // when the button is clicked the values
-            // in the boxes are stored to thse variables
-            FirstName = et_fName
-            LastName = et_lName
-            Phone = et_phone
-            // launch coroutine
-            // 3 possible coroutine scopes
-            // IO, Main, Default(heavy computational work)
-            CoroutineScope(Dispatchers.IO).launch {
-                // write the edit text values
-                // to firebase in a background thread
-                WriteToFirebase(FirstName.toString(), LastName.toString(), Phone.toString())
-            }
-
-            clickNum++
-            textView.text = "Submitted -> {$clickNum} times."
-
-        }
-
-    }
-
-
-    suspend fun WriteToFirebase(FNAME: String, LNAME: String, PHONE: String) {
         // [START write_message]
         // Write a message to the database
         val database = FirebaseDatabase.getInstance()
@@ -64,10 +38,74 @@ class MainActivity : AppCompatActivity() {
         val LnameRef = database.getReference("Last Name")
         val PhoneRef = database.getReference("Phone Number")
 
-        FnameRef.setValue(FNAME)
-        LnameRef.setValue(LNAME)
-        PhoneRef.setValue(PHONE)
+        // function to write input to Firebase
+        // suspended so it can run in a coroutine
+        suspend fun WriteToFirebase(FN: String, LN: String, PN: String){
+            FnameRef.setValue(FN)
+            LnameRef.setValue(LN)
+            PhoneRef.setValue(PN)
+        }
+
+        // function to read the data from Firebase
+        // also suspended in order to run in a coroutine
+
+        suspend fun ReadFromFirebase(){
+            // Reads from Firebase
+            FnameRef.addValueEventListener(object : ValueEventListener{
+                // this is executed on data changes
+                override fun onDataChange(dataSnapshot: DataSnapshot) {
+                    // This method is called once with
+                    // the initial value and again whenever
+                    // data at this location is updated
+                    val value = dataSnapshot.getValue()
+                    tv_DBRead.text = value.toString()
+                }
+                // this is executed when an error occurs
+                override fun onCancelled(error: DatabaseError) {
+
+                }
+
+            })
+        }
+
+
+
+        //val upButton = findViewById<Button>(R.id.btn_writeFB)
+        btn_writeFB.setOnClickListener {
+            // launch coroutine
+            // 3 possible coroutine scopes
+            // IO, Main, Default(heavy computational work)
+            CoroutineScope(Dispatchers.IO).launch {
+                // write the edit text values
+                // to firebase in a background thread
+                WriteToFirebase(et_fName.toString(), et_lName.toString(), et_phone.toString())
+            }
+            // reset the edit text values
+            et_fName?.text = null
+            et_lName?.text = null
+            et_phone?.text = null
+        }
+
+
+
+
+        // this button is for to read the
+        // previously written data to Firbase
+        // and display it in the UI somehow
+        btn_readGFB.setOnClickListener{
+            // set tv to null
+            tv_DBRead.text = null
+            CoroutineScope(Dispatchers.IO).launch {
+                ReadFromFirebase()
+            }
+        }
+
+        // should clear the UI/possibly
+        // the firebase entry also
+        btn_clear.setOnClickListener{
+            tv_DBRead.text = null
+        }
+
 
     }
-
 }

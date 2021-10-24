@@ -8,6 +8,7 @@ import android.widget.EditText
 import android.widget.TextView
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.database.*
+import com.google.firebase.database.ktx.database
 import com.google.firebase.ktx.Firebase
 import kotlinx.android.parcel.Parcelize
 import kotlinx.android.synthetic.main.activity_main.*
@@ -22,20 +23,23 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         // initialize the Real Time Database
-        val database = FirebaseDatabase.getInstance()
+        //val database = FirebaseDatabase.getInstance("https://fir-d8cd2-default-rtdb.firebaseio.com/")
+        val database = Firebase.database
         // create references for the fields
-        val FnameR = database.reference.child("First Name")
-        val LnameR = database.reference.child("Last Name")
-        val PhoneR = database.reference.child("Phone Number")
+        val FnameR = database.getReference("First Name")
+        val LnameR = database.getReference("Last Name")
+        val PhoneR = database.getReference("Phone Number")
 
 
-
+        // Write a message to the database
+        //val myRef = database.getReference("message")
+        //myRef.setValue("Hello, World!")
 
         // function to write input to Firebase
         // suspended so it can run in a coroutine
         suspend fun WriteToFirebase(FN: String, LN: String, PN: String) {
             // creates an instance of the User Data Class
-            val user = User(FN, LN, PN)
+            //val user = User(FN, LN, PN)
             // set the values to write to Firebase
             // TODO -> This is writing
             // ""androidx.appcompat.widget.AppCompatEditText{bc16016 VFED..CL. ........ 0,188-1080,346 #7f0801da app:id/et_fName}""
@@ -118,9 +122,11 @@ class MainActivity : AppCompatActivity() {
                 // 3 possible coroutine scopes
                 // IO, Main, Default(heavy computational work)
                 CoroutineScope(Dispatchers.IO).launch {
-                    // write the edit text values
                     // to firebase in a background thread
-                    WriteToFirebase(et_fName.toString(), et_lName.toString(), et_phone.toString())
+                    // this creates an object of the User data class
+                    val user2 = User(et_fName.text.toString(), et_lName.text.toString(), et_phone.text.toString())
+                    // those values are then passed into the WriteToFirebase Function up top
+                    WriteToFirebase(user2.firstname.toString(), user2.lastname.toString(), user2.phonenumber.toString())
                 }
                 // reset the edit text values
                 et_fName?.text = null
